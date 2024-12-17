@@ -1,35 +1,40 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getPosts, upvotePost, Post, getCurrentUserWallet, disconnectWallet } from '../lib/store';
+import { getPosts, upvotePost, Post } from '../lib/store';
+import { useSession, signIn, signOut } from "next-auth/react";
+import Link from 'next/link';
 
 type SortMode = 'hot' | 'new' | 'top';
 
 export default function Page() {
-  const [postsState, setPostsState] = useState<Post[]>(getPosts());
+  const { data: session } = useSession();
+  const [postsState, setPostsState] = useState<Post[]>([]);
   const [sortMode, setSortMode] = useState<SortMode>('hot');
-  const [wallet, setWallet] = useState(getCurrentUserWallet());
 
   useEffect(() => {
     applySorting();
-    setWallet(getCurrentUserWallet());
   }, [sortMode]);
 
-  function applySorting() {
-    let sorted = [...getPosts()];
+  useEffect(() => {
+    applySorting();
+  }, []);
+
+  async function applySorting() {
+    const posts = await getPosts();
+    let sorted = [...posts];
     if (sortMode === 'new') {
       sorted.sort((a, b) => b.createdAt - a.createdAt);
     } else if (sortMode === 'top') {
       sorted.sort((a, b) => b.points - a.points);
     } else {
-      // hot: points / age_in_hours
       const now = Date.now();
       sorted.sort((a, b) => {
         const ageA = (now - a.createdAt) / (1000 * 60 * 60);
         const ageB = (now - b.createdAt) / (1000 * 60 * 60);
         const hotA = a.points / (ageA === 0 ? 1 : ageA);
         const hotB = b.points / (ageB === 0 ? 1 : ageB);
-        return hotB - hotA; 
+        return hotB - hotA;
       });
     }
     setPostsState(sorted);
@@ -37,14 +42,16 @@ export default function Page() {
 
   function handleUpvote(i: number) {
     const postToUpvote = postsState[i];
-    if (!wallet) return;
-    upvotePost(postToUpvote, wallet);
+    if (!session?.user) {
+      signIn('github');
+      return;
+    }
+    upvotePost(postToUpvote, session.user.username!);
     applySorting();
   }
 
   function handleDisconnect() {
-    disconnectWallet();
-    setWallet(getCurrentUserWallet());
+    signOut();
   }
 
   function getDomain(url?: string) {
@@ -75,9 +82,9 @@ export default function Page() {
               </span>
             </td>
             <td style={{ textAlign: 'right', paddingRight: '20px' }}>
-              {wallet ? (
+              {session?.user ? (
                 <span style={{ color: '#000' }}>
-                  {wallet} (1) | <a onClick={handleDisconnect} style={{ cursor: 'pointer', color: '#000', textDecoration: 'none' }}>disconnect</a>
+                  {session.user.username} | <a onClick={handleDisconnect} style={{ cursor: 'pointer', color: '#000', textDecoration: 'none' }}>disconnect</a>
                 </span>
               ) : (
                 <span style={{ color: '#000' }}>not connected</span>
@@ -111,16 +118,28 @@ export default function Page() {
                   </td>
                   <td valign="top">
                     {/* Upvote as a unicode arrow ↑ */}
-                    <span onClick={() => handleUpvote(i)} style={{ cursor: wallet ? 'pointer' : 'default', marginRight: '5px', color: '#828282' }}>
+                    <span onClick={() => handleUpvote(i)} style={{ cursor: session?.user ? 'pointer' : 'default', marginRight: '5px', color: '#828282' }}>
                       ↑
                     </span>
                   </td>
                   <td>
-                    <a href={link} style={{ color: '#000', textDecoration: 'none' }}>{post.title}</a>
-                    {domain && <span style={{ fontSize: '8pt', color: '#828282' }}> ({domain})</span>}
+                    <Link 
+                      href={`/item/${post.id}`} 
+                      style={{ textDecoration: 'none', color: '#000000' }}
+                    >
+                      {post.title}
+                    </Link>
+                    {post.url && getDomain(post.url) && (
+                      <span style={{ fontSize: '8pt', color: '#828282', marginLeft: '5px' }}>
+                        (<a href={post.url} style={{ color: '#828282' }}>{getDomain(post.url)}</a>)
+                      </span>
+                    )}
                     <br />
                     <span style={{ fontSize: '8pt', color: '#828282' }}>
-                      {post.points} points by {post.walletAddress} | {post.commentsCount} comments
+                      {post.points} points by {post.username} | 
+                      <Link href={`/item/${post.id}`} style={{ textDecoration: 'none', color: '#828282', marginLeft: '5px' }}>
+                        {post.commentsCount} comments
+                      </Link>
                     </span>
                     <br /><br />
                   </td>

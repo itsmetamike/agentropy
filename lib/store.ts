@@ -1,98 +1,100 @@
+import { v4 as uuidv4 } from 'uuid';
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+export type Comment = {
+    username: string;
+    text: string;
+    createdAt: number;
+};
+
 export type Post = {
-    id: number;
+    id: string;
     title: string;
     url?: string;
     text?: string;
     points: number;
-    walletAddress: string;
+    username: string;
     createdAt: number;
     commentsCount: number;
-    comments?: { walletAddress: string; text: string; createdAt: number }[];
+    comments?: Comment[];
+    upvoters: string[];
 };
 
-// Simulate a currently connected user wallet
-let currentUserWallet: string | null = "2LYPF1FD";
-
-// Simple in-memory store
-let postIdCounter = 1;
-
-// Initial posts with no URLs
-let posts: Post[] = [
-    {
-        id: postIdCounter++,
-        title: "Programmable IP is coming to ai16zdao’s ElizaOS",
-        points: 13,
-        walletAddress: "udev4096",
-        createdAt: Date.now() - 1000 * 60 * 58, // 58 min ago
-        commentsCount: 1,
-        comments: [{ walletAddress: "someone", text: "Exciting news!", createdAt: Date.now() - 1000 * 60 * 30 }]
-    },
-    {
-        id: postIdCounter++,
-        title: "AI Agent Dev School Session 3",
-        points: 189,
-        walletAddress: "hashedan",
-        createdAt: Date.now() - 1000 * 60 * 60 * 5, // 5 hours ago
-        commentsCount: 0,
-        comments: []
-    },
-];
-
-// Track upvotes
-const upvotesByWallet: Record<string, Set<string>> = {};
-
-if (currentUserWallet && !upvotesByWallet[currentUserWallet]) {
-    upvotesByWallet[currentUserWallet] = new Set();
+export async function getPosts(): Promise<Post[]> {
+    const { data, error } = await supabase
+        .from('posts')
+        .select('*')
+    if (error) throw error
+    return data || []
 }
 
-export function getCurrentUserWallet() {
-    return currentUserWallet;
+export async function getPostById(id: string): Promise<Post | null> {
+    const { data, error } = await supabase
+        .from('posts')
+        .select(`
+            *,
+            comments (*)
+        `)
+        .eq('id', id)
+        .single()
+    if (error) return null
+    return data
 }
 
-export function disconnectWallet() {
-    currentUserWallet = null;
+export async function addPost(newPost: Omit<Post, "id" | "points" | "username" | "createdAt" | "commentsCount" | "comments" | "upvoters">, username: string) {
+    const { error } = await supabase
+        .from('posts')
+        .insert([{
+            ...newPost,
+            id: uuidv4(),
+            points: 1,
+            username,
+            created_at: new Date().toISOString(),
+            comments_count: 0,
+            upvoters: [username]
+        }])
+    if (error) throw error
 }
 
-export function getPosts() {
-    return posts;
-}
-
-export function getPostById(id: number): Post | undefined {
-    return posts.find(p => p.id === id);
-}
-
-export function addPost(newPost: Omit<Post, "id" | "points" | "walletAddress" | "createdAt" | "commentsCount" | "comments">) {
-    if (!currentUserWallet) return;
-    const completePost: Post = {
-        ...newPost,
-        id: postIdCounter++,
-        points: 1,
-        walletAddress: currentUserWallet,
-        createdAt: Date.now(),
-        commentsCount: 0,
-        comments: []
-    };
-    posts = [completePost, ...posts];
-}
-
-export function upvotePost(post: Post, wallet: string) {
-    if (!wallet) return;
-    if (!upvotesByWallet[wallet]) {
-        upvotesByWallet[wallet] = new Set();
+export async function upvotePost(post: Post, username: string) {
+    if (post.upvoters.includes(username)) {
+        return;
     }
-
-    const postId = post.id.toString();
-    if (!upvotesByWallet[wallet].has(postId)) {
-        post.points += 1;
-        upvotesByWallet[wallet].add(postId);
-    }
+    const { error } = await supabase
+        .from('posts')
+        .update({ 
+            points: post.points + 1,
+            upvoters: [...post.upvoters, username]
+        })
+        .eq('id', post.id)
+    if (error) throw error
 }
 
-export function addCommentToPost(postId: number, text: string) {
-    const post = getPostById(postId);
-    const wallet = currentUserWallet;
-    if (post && wallet && text.trim()) {
-        post.comments?.push({ walletAddress: wallet, text: text.trim(), createdAt: Date.now() });
-        post.commentsCount = post.comments?.length ?? 0;
-    }
+export async function addCommentToPost(postId: string, text: string, username: string) {
+    const { error: commentError } = await supabase
+        .from('comments')
+        .insert([{
+            post_id: postId,
+            username,
+            text,
+            created_at: new Date().toISOString()
+        }])
+    if (commentError) throw commentError
+
+    // Update comment count
+    const { data: comments } = await supabase
+        .from('comments')
+        .select('*')
+        .eq('post_id', postId)
+
+    const { error: updateError } = await supabase
+        .from('posts')
+        .update({ comments_count: comments?.length || 0 })
+        .eq('id', postId)
+    if (updateError) throw updateError
 }
