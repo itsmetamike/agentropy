@@ -24,14 +24,14 @@ export default function Page() {
     const posts = await getPosts();
     let sorted = [...posts];
     if (sortMode === 'new') {
-      sorted.sort((a, b) => b.createdAt - a.createdAt);
+      sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     } else if (sortMode === 'top') {
       sorted.sort((a, b) => b.points - a.points);
     } else {
-      const now = Date.now();
+      const now = new Date().getTime();
       sorted.sort((a, b) => {
-        const ageA = (now - a.createdAt) / (1000 * 60 * 60);
-        const ageB = (now - b.createdAt) / (1000 * 60 * 60);
+        const ageA = (now - new Date(a.created_at).getTime()) / (1000 * 60 * 60);
+        const ageB = (now - new Date(b.created_at).getTime()) / (1000 * 60 * 60);
         const hotA = a.points / (ageA === 0 ? 1 : ageA);
         const hotB = b.points / (ageB === 0 ? 1 : ageB);
         return hotB - hotA;
@@ -62,6 +62,20 @@ export default function Page() {
     } catch (e) {
       return null;
     }
+  }
+
+  function getTimeDifference(timestamp: string): string {
+    const now = new Date();
+    const postDate = new Date(timestamp);
+    const diffInMinutes = Math.floor((now.getTime() - postDate.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours} hours ago`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays} days ago`;
   }
 
   return (
@@ -123,22 +137,13 @@ export default function Page() {
                     </span>
                   </td>
                   <td>
-                    <Link 
-                      href={`/item/${post.id}`} 
-                      style={{ textDecoration: 'none', color: '#000000' }}
-                    >
-                      {post.title}
-                    </Link>
-                    {post.url && getDomain(post.url) && (
-                      <span style={{ fontSize: '8pt', color: '#828282', marginLeft: '5px' }}>
-                        (<a href={post.url} style={{ color: '#828282' }}>{getDomain(post.url)}</a>)
-                      </span>
-                    )}
+                    <a href={link} style={{ color: '#000', textDecoration: 'none' }}>{post.title}</a>
+                    {domain && <span style={{ fontSize: '8pt', color: '#828282' }}> ({domain})</span>}
                     <br />
                     <span style={{ fontSize: '8pt', color: '#828282' }}>
-                      {post.points} points by {post.username} | 
-                      <Link href={`/item/${post.id}`} style={{ textDecoration: 'none', color: '#828282', marginLeft: '5px' }}>
-                        {post.commentsCount} comments
+                      {post.points} points by {post.username} {getTimeDifference(post.created_at)} | {' '}
+                      <Link href={`/item/${post.id}`} style={{ textDecoration: 'none', color: '#828282' }}>
+                        {post.comments_count === 0 ? 'discuss' : `${post.comments_count} comments`}
                       </Link>
                     </span>
                     <br /><br />

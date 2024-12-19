@@ -7,9 +7,11 @@ const supabase = createClient(
 );
 
 export type Comment = {
-    username: string;
+    id: string;
+    post_id: string;
     text: string;
-    createdAt: number;
+    username: string;
+    created_at: string;
 };
 
 export type Post = {
@@ -19,34 +21,34 @@ export type Post = {
     text?: string;
     points: number;
     username: string;
-    createdAt: number;
-    commentsCount: number;
-    comments?: Comment[];
     upvoters: string[];
+    comments_count: number;
+    created_at: string;
+    comments?: Comment[];
 };
 
-export async function getPosts(): Promise<Post[]> {
-    const { data, error } = await supabase
+export async function getPosts() {
+    const { data: posts, error } = await supabase
         .from('posts')
         .select('*')
-    if (error) throw error
-    return data || []
+        .order('created_at', { ascending: false });
+    
+    if (error) throw error;
+    return posts || [];
 }
 
-export async function getPostById(id: string): Promise<Post | null> {
-    const { data, error } = await supabase
+export async function getPostById(id: string) {
+    const { data: post, error } = await supabase
         .from('posts')
-        .select(`
-            *,
-            comments (*)
-        `)
+        .select('*, comments(*)')
         .eq('id', id)
-        .single()
-    if (error) return null
-    return data
+        .single();
+    
+    if (error) return null;
+    return post;
 }
 
-export async function addPost(newPost: Omit<Post, "id" | "points" | "username" | "createdAt" | "commentsCount" | "comments" | "upvoters">, username: string) {
+export async function addPost(newPost: Omit<Post, "id" | "points" | "username" | "created_at" | "comments_count" | "upvoters">, username: string) {
     const { error } = await supabase
         .from('posts')
         .insert([{
@@ -54,25 +56,27 @@ export async function addPost(newPost: Omit<Post, "id" | "points" | "username" |
             id: uuidv4(),
             points: 1,
             username,
-            created_at: new Date().toISOString(),
-            comments_count: 0,
-            upvoters: [username]
-        }])
-    if (error) throw error
+            upvoters: [username],
+            comments_count: 0
+        }]);
+    
+    if (error) throw error;
 }
 
 export async function upvotePost(post: Post, username: string) {
     if (post.upvoters.includes(username)) {
         return;
     }
+
     const { error } = await supabase
         .from('posts')
         .update({ 
             points: post.points + 1,
             upvoters: [...post.upvoters, username]
         })
-        .eq('id', post.id)
-    if (error) throw error
+        .eq('id', post.id);
+    
+    if (error) throw error;
 }
 
 export async function addCommentToPost(postId: string, text: string, username: string) {
@@ -81,20 +85,21 @@ export async function addCommentToPost(postId: string, text: string, username: s
         .insert([{
             post_id: postId,
             username,
-            text,
-            created_at: new Date().toISOString()
-        }])
-    if (commentError) throw commentError
+            text
+        }]);
+    
+    if (commentError) throw commentError;
 
     // Update comment count
     const { data: comments } = await supabase
         .from('comments')
         .select('*')
-        .eq('post_id', postId)
+        .eq('post_id', postId);
 
     const { error: updateError } = await supabase
         .from('posts')
         .update({ comments_count: comments?.length || 0 })
-        .eq('id', postId)
-    if (updateError) throw updateError
+        .eq('id', postId);
+    
+    if (updateError) throw updateError;
 }

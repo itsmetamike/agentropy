@@ -12,6 +12,21 @@ export default function ItemPage() {
   const { id } = useParams() as { id: string };
   const [post, setPost] = useState<Post | null>(null);
   const [comment, setComment] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  function getTimeDifference(timestamp: string): string {
+    const now = new Date();
+    const postDate = new Date(timestamp);
+    const diffInMinutes = Math.floor((now.getTime() - postDate.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours} hours ago`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays} days ago`;
+  }
 
   function getDomain(url?: string) {
     if (!url) return null;
@@ -25,8 +40,10 @@ export default function ItemPage() {
 
   useEffect(() => {
     async function fetchPost() {
+      setIsLoading(true);
       const fetchedPost = await getPostById(id);
       setPost(fetchedPost);
+      setIsLoading(false);
     }
     fetchPost();
   }, [id]);
@@ -40,6 +57,17 @@ export default function ItemPage() {
     setComment('');
     const updatedPost = await getPostById(id);
     setPost(updatedPost);
+  }
+
+  if (isLoading) {
+    return (
+      <div style={{ backgroundColor: '#f6f6ef', minHeight: '100vh', fontFamily: 'Verdana, Geneva, sans-serif', fontSize: '10pt', color: '#333' }}>
+        <Header />
+        <div style={{ padding: '20px' }}>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!post) {
@@ -107,7 +135,9 @@ export default function ItemPage() {
         <div style={{ marginTop: '20px' }}>
           {post.comments?.map((c, i) => (
             <div key={i} style={{ margin: '10px 0', borderLeft: '2px solid #ff6600', paddingLeft: '10px' }}>
-              <div style={{ fontSize: '8pt', color: '#828282' }}>{c.username} says:</div>
+              <div style={{ fontSize: '8pt', color: '#828282' }}>
+                {c.username} {getTimeDifference(c.created_at)}
+              </div>
               <p style={{ margin: '5px 0', fontSize: '9pt' }}>{c.text}</p>
             </div>
           ))}
