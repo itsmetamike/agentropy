@@ -2,20 +2,132 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.cdnfonts.com/css/jetbrains-mono-2');
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --font-family: "JetBrains Mono", monospace;
+  --line-height: 1.20rem;
+  --border-thickness: 2px;
+  --text-color: #000;
+  --text-color-alt: #ccc;
+  --background-color: #fff;
+  --background-color-alt: #eee;
+  --font-weight-normal: 500;
+  --font-weight-medium: 600;
+  --font-weight-bold: 800;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root.dark {
+  --text-color: #fff;
+  --text-color-alt: #444;
+  --background-color: #000;
+  --background-color-alt: #111;
+}
+
+/* Style form elements for both modes */
+input[type="text"],
+textarea,
+select {
+  background-color: var(--background-color) !important;
+  color: var(--text-color) !important;
+}
+
+/* Style select dropdowns for both modes */
+select option {
+  background-color: var(--background-color) !important;
+  color: var(--text-color) !important;
+}
+
+select option:hover,
+select option:focus,
+select option:checked,
+select option:active {
+  background-color: #ff6600 !important;
+  color: white !important;
+}
+
+/* Style checkbox */
+input[type="checkbox"] {
+  accent-color: #ff6600;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
   }
-}
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  html {
+    display: flex;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    flex-direction: column;
+    align-items: center;
+    background: var(--background-color);
+    color: var(--text-color);
+    font-family: var(--font-family);
+    line-height: var(--line-height);
+    font-weight: var(--font-weight-normal);
+    font-style: normal;
+    font-variant-numeric: tabular-nums lining-nums;
+    font-size: 16px;
+  }
+
+  body {
+    position: relative;
+    width: 100%;
+    margin: 0;
+    padding: var(--line-height) 2ch;
+    max-width: calc(min(80ch, 100%));
+    line-height: var(--line-height);
+    overflow-x: hidden;
+    background: var(--background-color);
+    color: var(--text-color);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: var(--font-weight-bold);
+    margin: calc(var(--line-height) * 2) 0 var(--line-height);
+    line-height: var(--line-height);
+  }
+
+  h1 {
+    font-size: 2rem;
+    line-height: calc(2 * var(--line-height));
+    margin-bottom: calc(var(--line-height) * 2);
+    text-transform: uppercase;
+  }
+
+  h2 {
+    font-size: 1rem;
+    text-transform: uppercase;
+  }
+
+  a {
+    text-decoration-thickness: var(--border-thickness);
+    color: var(--text-color);
+  }
+
+  p {
+    margin-bottom: var(--line-height);
+    word-break: break-word;
+    word-wrap: break-word;
+    hyphens: auto;
+  }
+
+  img, video {
+    display: block;
+    width: 100%;
+    object-fit: contain;
+    overflow: hidden;
+  }
+
+  @media screen and (max-width: 480px) {
+    body {
+      font-size: 14px;
+      padding: var(--line-height) 1ch;
+    }
+  }
 }

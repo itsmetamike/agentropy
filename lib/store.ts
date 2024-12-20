@@ -14,6 +14,8 @@ export type Comment = {
     created_at: string;
 };
 
+export type BlockchainType = 'solana' | 'base' | 'ethereum' | 'arbitrum' | 'optimism';
+
 export type Post = {
     id: string;
     title: string;
@@ -25,6 +27,10 @@ export type Post = {
     comments_count: number;
     created_at: string;
     comments?: Comment[];
+    has_token: boolean;
+    token_ticker?: string;
+    token_blockchain?: BlockchainType;
+    token_contract?: string;
 };
 
 export async function getPosts() {
@@ -48,19 +54,46 @@ export async function getPostById(id: string) {
     return post;
 }
 
-export async function addPost(newPost: Omit<Post, "id" | "points" | "username" | "created_at" | "comments_count" | "upvoters">, username: string) {
-    const { error } = await supabase
+export async function addPost(
+    newPost: Omit<Post, 
+        "id" | 
+        "points" | 
+        "username" | 
+        "created_at" | 
+        "comments_count" | 
+        "upvoters" | 
+        "has_token" | 
+        "token_ticker" | 
+        "token_blockchain" | 
+        "token_contract"
+    > & {
+        has_token?: boolean;
+        token_ticker?: string;
+        token_blockchain?: BlockchainType;
+        token_contract?: string;
+    }, 
+    username: string
+) {
+    const { data: post, error } = await supabase
         .from('posts')
         .insert([{
-            ...newPost,
             id: uuidv4(),
+            ...newPost,
             points: 1,
             username,
+            created_at: new Date().toISOString(),
+            comments_count: 0,
             upvoters: [username],
-            comments_count: 0
-        }]);
-    
+            has_token: newPost.has_token || false,
+            token_ticker: newPost.token_ticker,
+            token_blockchain: newPost.token_blockchain,
+            token_contract: newPost.token_contract,
+        }])
+        .select()
+        .single();
+
     if (error) throw error;
+    return post;
 }
 
 export async function upvotePost(post: Post, username: string) {

@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { getPosts, upvotePost, Post } from '../lib/store';
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 import Link from 'next/link';
+import Header from './components/Header';
+import Image from 'next/image';
+import ExternalLink from './components/ExternalLink';
 
 type SortMode = 'hot' | 'new' | 'top';
 
@@ -40,28 +43,14 @@ export default function Page() {
     setPostsState(sorted);
   }
 
-  function handleUpvote(i: number) {
-    const postToUpvote = postsState[i];
+  function handleUpvote(id: number) {
+    const postToUpvote = postsState.find(post => post.id === id);
     if (!session?.user) {
       signIn('github');
       return;
     }
-    upvotePost(postToUpvote, session.user.username!);
+    upvotePost(postToUpvote!, session.user.username!);
     applySorting();
-  }
-
-  function handleDisconnect() {
-    signOut();
-  }
-
-  function getDomain(url?: string) {
-    if (!url) return null;
-    try {
-      const domain = new URL(url).hostname.replace('www.', '');
-      return domain;
-    } catch (e) {
-      return null;
-    }
   }
 
   function getTimeDifference(timestamp: string): string {
@@ -78,82 +67,112 @@ export default function Page() {
     return `${diffInDays} days ago`;
   }
 
+  function getDomain(url: string): string {
+    try {
+      return new URL(url).hostname.replace('www.', '');
+    } catch {
+      return url;
+    }
+  }
+
   return (
-    <div style={{ backgroundColor: '#f6f6ef', minHeight: '100vh', fontFamily: 'Verdana, Geneva, sans-serif', fontSize: '10pt', color: '#333' }}>
-      {/* Top bar */}
-      <table style={{ width: '100%', backgroundColor: '#ff6600', padding: '2px' }} cellPadding="0" cellSpacing="0" border={0}>
-        <tbody>
-          <tr>
-            <td style={{ width: '18px', padding: '0 2px' }}>
-              <a href="/" style={{ color: '#000' }}>
-                <img src="/favicon.ico" alt="Y" style={{ border: '1px solid #ff6600', width: '16px', height: '16px' }} />
-              </a>
-            </td>
-            <td style={{ lineHeight: '12pt' }}>
-              <span className="pagetop">
-                <b className="hnname"><a href="/" style={{ color: '#000', textDecoration: 'none' }}>ELIZA News</a></b>
-                {' '}| <a href="/submit" style={{ color: '#000', textDecoration: 'none' }}>submit</a>
-              </span>
-            </td>
-            <td style={{ textAlign: 'right', paddingRight: '20px' }}>
-              {session?.user ? (
-                <span style={{ color: '#000' }}>
-                  {session.user.username} | <a onClick={handleDisconnect} style={{ cursor: 'pointer', color: '#000', textDecoration: 'none' }}>disconnect</a>
-                </span>
-              ) : (
-                <span style={{ color: '#000' }}>not connected</span>
-              )}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div className="min-h-screen">
+      <Header />
+      <main className="max-w-content mx-auto p-line">
+        <div className="border-2 border-text p-line mb-line">
+          <div className="mb-line text-[0.9em]">
+            sort by:{' '}
+            <button
+              onClick={() => setSortMode('hot')}
+              className={`text-text ${sortMode === 'hot' ? 'underline' : ''}`}
+            >
+              hot
+            </button>
+            {' | '}
+            <button
+              onClick={() => setSortMode('new')}
+              className={`text-text ${sortMode === 'new' ? 'underline' : ''}`}
+            >
+              new
+            </button>
+            {' | '}
+            <button
+              onClick={() => setSortMode('top')}
+              className={`text-text ${sortMode === 'top' ? 'underline' : ''}`}
+            >
+              top
+            </button>
+          </div>
 
-      <div style={{ padding: '0 20px' }}>
-        <br />
-        {/* Sorting Controls */}
-        <div style={{ marginBottom: '10px', fontSize: '10pt', color: '#828282' }}>
-          sort by:
-          {' '}<a href="#" onClick={() => setSortMode('hot')} style={{ color: sortMode === 'hot' ? '#000' : '#828282', marginLeft: '5px', textDecoration: 'none' }}>hot</a> |
-          <a href="#" onClick={() => setSortMode('new')} style={{ color: sortMode === 'new' ? '#000' : '#828282', marginLeft: '5px', textDecoration: 'none' }}>new</a> |
-          <a href="#" onClick={() => setSortMode('top')} style={{ color: sortMode === 'top' ? '#000' : '#828282', marginLeft: '5px', textDecoration: 'none' }}>top</a>
-        </div>
-
-        <table cellPadding={0} cellSpacing={0}>
-          <tbody>
-            {postsState.map((post, i) => {
-              const rank = i + 1;
-              const domain = getDomain(post.url);
-              const link = post.url ? post.url : `/item/${post.id}`;
-
-              return (
-                <tr key={post.id}>
-                  <td valign="top" style={{ textAlign: 'right', paddingRight: '5px' }}>
-                    <span style={{ color: '#828282' }}>{rank}.</span>
-                  </td>
-                  <td valign="top">
-                    {/* Upvote as a unicode arrow ↑ */}
-                    <span onClick={() => handleUpvote(i)} style={{ cursor: session?.user ? 'pointer' : 'default', marginRight: '5px', color: '#828282' }}>
-                      ↑
-                    </span>
-                  </td>
-                  <td>
-                    <a href={link} style={{ color: '#000', textDecoration: 'none' }}>{post.title}</a>
-                    {domain && <span style={{ fontSize: '8pt', color: '#828282' }}> ({domain})</span>}
-                    <br />
-                    <span style={{ fontSize: '8pt', color: '#828282' }}>
-                      {post.points} points by {post.username} {getTimeDifference(post.created_at)} | {' '}
-                      <Link href={`/item/${post.id}`} style={{ textDecoration: 'none', color: '#828282' }}>
-                        {post.comments_count === 0 ? 'discuss' : `${post.comments_count} comments`}
+          <div className="space-y-line">
+            {postsState.map((post, i) => (
+              <article key={post.id} className="mb-line">
+                <div className="flex gap-2">
+                  <div className="text-text font-mono">{i + 1}.</div>
+                  <div>
+                    <div className="flex items-baseline gap-2">
+                      <button
+                        onClick={() => handleUpvote(post.id)}
+                        disabled={!session?.user || post.upvoters.includes(session?.user?.name || '')}
+                        className="text-hn-orange cursor-pointer disabled:cursor-default"
+                      >
+                        ▲
+                      </button>
+                      <h2 className="text-text font-normal m-0">
+                        <Link href={`/item/${post.id}`} className="text-text hover:underline">
+                          {post.title}
+                        </Link>
+                      </h2>
+                      {post.url && (
+                        <div className="text-[0.9em] text-[#888] dark:text-[#666] font-mono">
+                          [<ExternalLink href={post.url} className="text-[#888] dark:text-[#666] hover:underline">{getDomain(post.url)}</ExternalLink>]
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-[0.9em] text-[#888] dark:text-[#666] flex flex-wrap items-center gap-x-1 pl-[18px]">
+                      <span>{post.points} points</span>
+                      <span>by {post.username}</span>
+                      <span>{getTimeDifference(post.created_at)}</span>
+                      {post.has_token && (
+                        <>
+                          <span>|</span>
+                          <div className="inline-flex items-center gap-1">
+                            <Image
+                              src={`/${post.token_blockchain === 'ethereum' ? 'eth' : 
+                                    post.token_blockchain === 'optimism' ? 'op' : 
+                                    post.token_blockchain === 'solana' ? 'sol' : 
+                                    post.token_blockchain}.png`}
+                              alt={post.token_blockchain}
+                              width={12}
+                              height={12}
+                              className="w-3 h-3"
+                            />
+                            <ExternalLink 
+                              href={`https://dexscreener.com/${post.token_blockchain}/${post.token_contract}`}
+                              className="text-[#888] dark:text-[#666] hover:underline"
+                              skipWarning={true}
+                            >
+                              ${post.token_ticker.replace('$', '')}
+                            </ExternalLink>
+                            {' | '}{post.token_blockchain}
+                          </div>
+                        </>
+                      )}
+                      <span>|</span>
+                      <Link
+                        href={`/item/${post.id}`}
+                        className="text-[#888] dark:text-[#666] hover:underline"
+                      >
+                        {post.comments_count} comments
                       </Link>
-                    </span>
-                    <br /><br />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

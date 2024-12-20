@@ -2,6 +2,7 @@
 
 import { useSession, signIn } from "next-auth/react";
 import { useEffect } from "react";
+import Header from "./Header";
 
 export default function RequireAuth({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -14,8 +15,11 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
 
   if (status === "loading") {
     return (
-      <div style={{ backgroundColor: '#f6f6ef', minHeight: '100vh', fontFamily: 'Verdana, Geneva, sans-serif', fontSize: '10pt', color: '#333', padding: '20px' }}>
-        Loading...
+      <div className="min-h-screen bg-white">
+        <Header />
+        <main className="max-w-content mx-auto p-line">
+          <div className="text-text">Loading...</div>
+        </main>
       </div>
     );
   }
@@ -25,4 +29,4 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
   }
 
   return <>{children}</>;
-} 
+}

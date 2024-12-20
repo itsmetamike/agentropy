@@ -8,8 +8,8 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body style={{ margin: '0' }}>
+    <html lang="en" className="bg-bg text-text">
+      <body className="font-mono">
         <Providers>{children}</Providers>
       </body>
     </html>

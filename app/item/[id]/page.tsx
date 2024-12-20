@@ -6,6 +6,9 @@ import { getPostById, addCommentToPost } from '../../../lib/store';
 import { useSession, signIn } from "next-auth/react";
 import { Post } from '../../../lib/store';
 import Header from '../../components/Header';
+import Link from 'next/link';
+import Image from 'next/image';
+import ExternalLink from '../../components/ExternalLink';
 
 export default function ItemPage() {
   const { data: session } = useSession();
@@ -61,88 +64,110 @@ export default function ItemPage() {
 
   if (isLoading) {
     return (
-      <div style={{ backgroundColor: '#f6f6ef', minHeight: '100vh', fontFamily: 'Verdana, Geneva, sans-serif', fontSize: '10pt', color: '#333' }}>
+      <div className="min-h-screen bg-white dark:bg-black">
         <Header />
-        <div style={{ padding: '20px' }}>
-          <p>Loading...</p>
-        </div>
+        <main className="max-w-content mx-auto p-line">
+          <p className="text-text">Loading...</p>
+        </main>
       </div>
     );
   }
 
   if (!post) {
     return (
-      <div style={{ backgroundColor: '#f6f6ef', minHeight: '100vh', fontFamily: 'Verdana, Geneva, sans-serif', fontSize: '10pt', color: '#333' }}>
+      <div className="min-h-screen bg-white dark:bg-black">
         <Header />
-        <div style={{ padding: '20px' }}>
-          <p>Post not found.</p>
-          <a href="/" style={{ textDecoration: 'none', color: '#ff6600' }}>Go back to homepage</a>
-        </div>
+        <main className="max-w-content mx-auto p-line">
+          <p className="text-text mb-line">Post not found.</p>
+          <Link href="/" className="text-text underline">
+            Go back to homepage
+          </Link>
+        </main>
       </div>
     );
   }
 
   return (
-    <div style={{ backgroundColor: '#f6f6ef', minHeight: '100vh', fontFamily: 'Verdana, Geneva, sans-serif', fontSize: '10pt', color: '#333' }}>
+    <div className="min-h-screen bg-white dark:bg-black">
       <Header />
-      <div style={{ padding: '10px' }}>
-        <div style={{ marginBottom: '10px' }}>
-          <h1 style={{ fontSize: '10pt', margin: '0', fontWeight: 'normal' }}>
-            {post.title}
-            {post.url && (
-              <span style={{ fontSize: '8pt', color: '#828282', marginLeft: '5px' }}>
-                (<a href={post.url} style={{ color: '#828282' }}>{getDomain(post.url)}</a>)
-              </span>
-            )}
-          </h1>
-          <div style={{ fontSize: '8pt', color: '#828282', marginTop: '3px' }}>
-            {post.points} points by {post.username}
-          </div>
-        </div>
-
-        {post.text && (
-          <p style={{ margin: '10px 0', fontSize: '9pt' }}>{post.text}</p>
-        )}
-
-        <div style={{ marginTop: '20px' }}>
-          <textarea 
-            value={comment} 
-            onChange={(e) => setComment(e.target.value)}
-            style={{
-              width: '100%',
-              minHeight: '100px',
-              marginBottom: '10px',
-              fontFamily: 'Verdana, Geneva, sans-serif',
-              fontSize: '9pt',
-              padding: '5px'
-            }}
-          />
-          <button 
-            onClick={handleAddComment}
-            style={{
-              fontFamily: 'monospace',
-              color: '#000',
-              backgroundColor: '#f6f6ef',
-              border: '1px solid #000',
-              padding: '2px 4px',
-              cursor: 'pointer'
-            }}
-          >
-            Add Comment
-          </button>
-        </div>
-
-        <div style={{ marginTop: '20px' }}>
-          {post.comments?.map((c, i) => (
-            <div key={i} style={{ margin: '10px 0', borderLeft: '2px solid #ff6600', paddingLeft: '10px' }}>
-              <div style={{ fontSize: '8pt', color: '#828282' }}>
-                {c.username} {getTimeDifference(c.created_at)}
-              </div>
-              <p style={{ margin: '5px 0', fontSize: '9pt' }}>{c.text}</p>
+      <main className="max-w-content mx-auto p-line">
+        <article className="border-2 border-text p-line mb-line">
+          <header className="mb-line">
+            <div className="flex items-baseline gap-2">
+              <h1 className="text-text font-bold m-0">
+                {post.url ? (
+                  <ExternalLink href={post.url} className="text-text hover:underline">
+                    {post.title}
+                  </ExternalLink>
+                ) : (
+                  post.title
+                )}
+              </h1>
+              {post.url && (
+                <div className="text-[0.9em] text-[#888] dark:text-[#666] font-mono">
+                  [<ExternalLink href={post.url} className="text-[#888] dark:text-[#666] hover:underline">{post.url}</ExternalLink>]
+                </div>
+              )}
             </div>
-          ))}
-        </div>
-      </div>
+            <div className="text-[0.9em] text-[#888] dark:text-[#666] flex flex-wrap items-center gap-x-1">
+              <span>{post.points} points</span>
+              <span>by {post.username}</span>
+              <span>{getTimeDifference(post.created_at)}</span>
+              {post.has_token && (
+                <>
+                  <span>|</span>
+                  <div className="inline-flex items-center gap-1">
+                    <Image
+                      src={`/${post.token_blockchain === 'ethereum' ? 'eth' : 
+                            post.token_blockchain === 'optimism' ? 'op' : 
+                            post.token_blockchain === 'solana' ? 'sol' : 
+                            post.token_blockchain}.png`}
+                      alt={post.token_blockchain}
+                      width={12}
+                      height={12}
+                      className="w-3 h-3"
+                    />
+                    <ExternalLink 
+                      href={`https://dexscreener.com/${post.token_blockchain}/${post.token_contract}`}
+                      className="text-[#888] dark:text-[#666] hover:underline"
+                      skipWarning={true}
+                    >
+                      ${post.token_ticker.replace('$', '')}
+                    </ExternalLink>
+                  </div>
+                </>
+              )}
+            </div>
+          </header>
+          {post.text && (
+            <div className="text-text mb-line whitespace-pre-wrap">{post.text}</div>
+          )}
+          <div className="space-y-line">
+            {post.comments?.map((comment) => (
+              <div key={comment.id} className="border-2 border-text p-line">
+                <div className="text-[0.9em] text-[#888] dark:text-[#666] mb-2">
+                  {comment.username} {getTimeDifference(comment.created_at)}
+                </div>
+                <div className="text-text whitespace-pre-wrap">{comment.text}</div>
+              </div>
+            ))}
+            <div className="border-2 border-text p-line">
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Add a comment..."
+                className="w-full p-2 border border-text text-text font-mono text-[0.9em] placeholder:text-[#888] dark:placeholder:text-[#666] h-32 mb-2"
+              />
+              <button
+                onClick={handleAddComment}
+                className="border border-hn-orange text-hn-orange hover:bg-hn-orange hover:text-white px-2 py-1 text-[0.9em]"
+              >
+                add comment
+              </button>
+            </div>
+          </div>
+        </article>
+      </main>
     </div>
   );
 }
