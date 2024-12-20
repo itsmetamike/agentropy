@@ -45,9 +45,9 @@ export default function Header() {
           <tr>
             <td rowSpan={4} className="border-2 border-text p-4">
               <Link href="/" className="no-underline hover:no-underline">
-                <h1 className="text-4xl font-bold uppercase m-0 text-text">ELIZA News</h1>
+                <h1 className="text-4xl font-bold lowercase m-0 text-text">agentropy</h1>
               </Link>
-              <span className="text-text-alt block">The latest AI agent news</span>
+              <span className="text-text-alt block">calculated chaos. curated.</span>
             </td>
             <th className="border-2 border-text p-2 text-center text-[0.9em]">Status</th>
             <td className="border-2 border-text p-2 w-32 whitespace-nowrap text-center">

@@ -3,7 +3,10 @@ import { ReactNode } from 'react';
 import { Providers } from './providers';
 
 export const metadata = {
-  title: 'ELIZA News',
+  title: 'agentropy',
+  icons: {
+    icon: '/icon.png',
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
