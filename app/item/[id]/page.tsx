@@ -2,16 +2,22 @@
 
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { getPostById, addCommentToPost } from '../../../lib/store';
-import { useSession, signIn } from "next-auth/react";
+import { getPostById, addCommentToPost, shortenAddress } from '../../../lib/store';
+import { useSession } from "next-auth/react";
 import { Post } from '../../../lib/store';
 import Header from '../../components/Header';
 import Link from 'next/link';
 import Image from 'next/image';
 import ExternalLink from '../../components/ExternalLink';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useAuth } from '../../../lib/auth';
+import WalletIcon from '../../components/WalletIcon';
+import GithubIcon from '../../components/GithubIcon';
 
 export default function ItemPage() {
   const { data: session } = useSession();
+  const { publicKey } = useWallet();
+  const { isAuthenticated, authMethod } = useAuth();
   const { id } = useParams() as { id: string };
   const [post, setPost] = useState<Post | null>(null);
   const [comment, setComment] = useState('');
@@ -52,14 +58,32 @@ export default function ItemPage() {
   }, [id]);
 
   async function handleAddComment() {
-    if (!session?.user?.name) {
-      signIn('github');
+    if (!isAuthenticated) {
+      alert('Please connect with GitHub or a wallet to comment');
       return;
     }
-    await addCommentToPost(id, comment, session.user.name);
-    setComment('');
-    const updatedPost = await getPostById(id);
-    setPost(updatedPost);
+
+    if (authMethod === 'wallet' && !publicKey) {
+      alert('Please connect your wallet to comment');
+      return;
+    }
+
+    try {
+      console.log('Adding comment with wallet address:', publicKey?.toBase58());
+      await addCommentToPost(id, comment, publicKey?.toBase58());
+      setComment('');
+      const updatedPost = await getPostById(id);
+      setPost(updatedPost);
+    } catch (error: any) {
+      console.error('Error adding comment:', error);
+      if (error.message) {
+        alert(error.message);
+      } else if (error.error?.message) {
+        alert(error.error.message);
+      } else {
+        alert('Error adding comment. Please try again.');
+      }
+    }
   }
 
   if (isLoading) {
@@ -111,14 +135,34 @@ export default function ItemPage() {
             </div>
             <div className="text-[0.9em] text-[#888] dark:text-[#666] flex flex-wrap items-center gap-x-1">
               <span>{post.points} points</span>
-              <span>by {post.username}</span>
+              <span>by {post.username.startsWith('0x') || post.username.length > 30 ? (
+                <>
+                  {post.username.startsWith('0x') ? null : <WalletIcon />}
+                  {shortenAddress(post.username)}
+                </>
+              ) : (
+                <>
+                  <GithubIcon />
+                  {post.username}
+                </>
+              )}</span>
+              {post.is_token_deployer && (
+                <span className="ml-1 px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs rounded-full">
+                  deployer
+                </span>
+              )}
+              {post.is_token_holder && (
+                <span className="ml-1 px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full">
+                  holder
+                </span>
+              )}
               <span>{getTimeDifference(post.created_at)}</span>
               {post.has_token && (
                 <>
                   <span>|</span>
                   <div className="inline-flex items-center gap-1">
                     <Image
-                      src={`/images/${post.token_blockchain === 'ethereum' ? 'eth' : 
+                      src={`/${post.token_blockchain === 'ethereum' ? 'eth' : 
                             post.token_blockchain === 'optimism' ? 'op' : 
                             post.token_blockchain === 'solana' ? 'sol' : 
                             post.token_blockchain}.png`}
@@ -146,7 +190,17 @@ export default function ItemPage() {
             {post.comments?.map((comment) => (
               <div key={comment.id} className="border-2 border-text p-line">
                 <div className="text-[0.9em] text-[#888] dark:text-[#666] mb-2">
-                  {comment.username} {getTimeDifference(comment.created_at)}
+                  {comment.username.startsWith('0x') || comment.username.length > 30 ? (
+                    <>
+                      {comment.username.startsWith('0x') ? null : <WalletIcon />}
+                      {shortenAddress(comment.username)}
+                    </>
+                  ) : (
+                    <>
+                      <GithubIcon />
+                      {comment.username}
+                    </>
+                  )} {getTimeDifference(comment.created_at)}
                 </div>
                 <div className="text-text whitespace-pre-wrap">{comment.text}</div>
               </div>

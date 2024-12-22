@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getPosts, upvotePost, Post } from '../lib/store';
-import { useSession, signIn } from "next-auth/react";
+import { getPosts, upvotePost, Post, shortenAddress } from '../lib/store';
+import { useSession } from "next-auth/react";
 import Link from 'next/link';
 import Header from './components/Header';
 import Image from 'next/image';
 import ExternalLink from './components/ExternalLink';
+import { ConnectButton } from './components/ConnectButton';
+import WalletIcon from './components/WalletIcon';
+import GithubIcon from './components/GithubIcon';
 
 type SortMode = 'hot' | 'new' | 'top';
 
@@ -125,40 +128,39 @@ export default function Page() {
                         </Link>
                       </h2>
                       {post.url && (
-                        <div className="text-[0.9em] text-[#888] dark:text-[#666] font-mono">
+                        <div className="text-[0.8em] text-[#888] dark:text-[#666] font-mono">
                           [<ExternalLink href={post.url} className="text-[#888] dark:text-[#666] hover:underline">{getDomain(post.url)}</ExternalLink>]
                         </div>
                       )}
                     </div>
-                    <div className="text-[0.9em] text-[#888] dark:text-[#666] flex flex-wrap items-center gap-x-1 pl-[18px]">
+                    <div className="text-[0.8em] text-[#888] dark:text-[#666] flex flex-wrap items-center gap-x-1 pl-[18px]">
                       <span>{post.points} points</span>
-                      <span>by {post.username}</span>
-                      <span>{getTimeDifference(post.created_at)}</span>
-                      {post.has_token && (
+                      <span>by {post.username.startsWith('0x') || post.username.length > 30 ? (
+                        <span className="inline-flex items-center gap-2">
+                          {post.username.startsWith('0x') ? null : <WalletIcon />}
+                          {shortenAddress(post.username)}
+                          {post.has_token && (
+                            <>
+                              {post.is_token_deployer && (
+                                <span className="px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs rounded-full">
+                                  deployer
+                                </span>
+                              )}
+                              {post.is_token_holder && (
+                                <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full">
+                                  holder
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </span>
+                      ) : (
                         <>
-                          <span>|</span>
-                          <div className="inline-flex items-center gap-1">
-                            <Image
-                              src={`/${post.token_blockchain === 'ethereum' ? 'eth' : 
-                                    post.token_blockchain === 'optimism' ? 'op' : 
-                                    post.token_blockchain === 'solana' ? 'sol' : 
-                                    post.token_blockchain}.png`}
-                              alt={post.token_blockchain}
-                              width={12}
-                              height={12}
-                              className="w-3 h-3"
-                            />
-                            <ExternalLink 
-                              href={`https://dexscreener.com/${post.token_blockchain}/${post.token_contract}`}
-                              className="text-[#888] dark:text-[#666] hover:underline"
-                              skipWarning={true}
-                            >
-                              ${post.token_ticker.replace('$', '')}
-                            </ExternalLink>
-                            {' | '}{post.token_blockchain}
-                          </div>
+                          <GithubIcon />
+                          {post.username}
                         </>
-                      )}
+                      )}</span>
+                      <span>{getTimeDifference(post.created_at)}</span>
                       <span>|</span>
                       <Link
                         href={`/item/${post.id}`}
@@ -167,6 +169,29 @@ export default function Page() {
                         {post.comments_count} comments
                       </Link>
                     </div>
+                    {post.has_token && (
+                      <div className="text-[0.8em] text-[#888] dark:text-[#666] flex flex-wrap items-center gap-x-1 pl-[18px]">
+                        <div className="inline-flex items-center gap-1">
+                          <Image
+                            src={`/${post.token_blockchain === 'ethereum' ? 'eth' : 
+                                  post.token_blockchain === 'optimism' ? 'op' : 
+                                  post.token_blockchain === 'solana' ? 'sol' : 
+                                  post.token_blockchain}.png`}
+                            alt={post.token_blockchain}
+                            width={12}
+                            height={12}
+                            className="w-3 h-3"
+                          />
+                          <ExternalLink 
+                            href={`https://dexscreener.com/${post.token_blockchain}/${post.token_contract}`}
+                            className="text-[#888] dark:text-[#666] hover:underline"
+                            skipWarning={true}
+                          >
+                            ${post.token_ticker.replace('$', '')}
+                          </ExternalLink>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </article>

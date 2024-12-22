@@ -9,13 +9,21 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@solana/spl-token": "^0.4.9",
+    "@solana/wallet-adapter-base": "^0.9.23",
+    "@solana/wallet-adapter-phantom": "^0.9.24",
+    "@solana/wallet-adapter-react": "^0.15.35",
+    "@solana/wallet-adapter-react-ui": "^0.9.35",
+    "@solana/web3.js": "^1.98.0",
     "@supabase/supabase-js": "^2.47.8",
+    "ethers": "^6.13.4",
     "next": "^15.1.2",
     "next-auth": "^5.0.0-beta.15",
     "pino-pretty": "^13.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "uuid": "^11.0.3"
+    "uuid": "^11.0.3",
+    "zustand": "^5.0.2"
   },
   "devDependencies": {
     "@types/node": "^20.17.10",
