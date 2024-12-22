@@ -25,7 +25,7 @@ export default function Page() {
 
   async function applySorting() {
     const posts = await getPosts();
-    let sorted = [...posts];
+    const sorted = [...posts];
     if (sortMode === 'new') {
       sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     } else if (sortMode === 'top') {
@@ -43,15 +43,16 @@ export default function Page() {
     setPostsState(sorted);
   }
 
-  function handleUpvote(id: number) {
-    const postToUpvote = postsState.find(post => post.id === id);
-    if (!session?.user) {
-      signIn('github');
-      return;
-    }
+  const handleUpvote = async (postId: string) => {
+    if (!session?.user) return;
+    const postToUpvote = postsState.find(post => post.id === parseInt(postId));
     upvotePost(postToUpvote!, session.user.username!);
     applySorting();
   }
+
+  const handleSort = (mode: SortMode) => {
+    setSortMode(mode);
+  };
 
   function getTimeDifference(timestamp: string): string {
     const now = new Date();
@@ -83,21 +84,21 @@ export default function Page() {
           <div className="mb-line text-[0.9em]">
             sort by:{' '}
             <button
-              onClick={() => setSortMode('hot')}
+              onClick={() => handleSort('hot')}
               className={`text-text ${sortMode === 'hot' ? 'underline' : ''}`}
             >
               hot
             </button>
             {' | '}
             <button
-              onClick={() => setSortMode('new')}
+              onClick={() => handleSort('new')}
               className={`text-text ${sortMode === 'new' ? 'underline' : ''}`}
             >
               new
             </button>
             {' | '}
             <button
-              onClick={() => setSortMode('top')}
+              onClick={() => handleSort('top')}
               className={`text-text ${sortMode === 'top' ? 'underline' : ''}`}
             >
               top
@@ -112,7 +113,7 @@ export default function Page() {
                   <div>
                     <div className="flex items-baseline gap-2">
                       <button
-                        onClick={() => handleUpvote(post.id)}
+                        onClick={() => handleUpvote(post.id.toString())}
                         disabled={!session?.user || post.upvoters.includes(session?.user?.name || '')}
                         className="text-hn-orange cursor-pointer disabled:cursor-default"
                       >

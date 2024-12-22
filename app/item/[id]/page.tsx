@@ -118,7 +118,7 @@ export default function ItemPage() {
                   <span>|</span>
                   <div className="inline-flex items-center gap-1">
                     <Image
-                      src={`/${post.token_blockchain === 'ethereum' ? 'eth' : 
+                      src={`/images/${post.token_blockchain === 'ethereum' ? 'eth' : 
                             post.token_blockchain === 'optimism' ? 'op' : 
                             post.token_blockchain === 'solana' ? 'sol' : 
                             post.token_blockchain}.png`}
