@@ -6,8 +6,8 @@ import { useEffect } from 'react'
 interface AuthState {
   authMethod: 'github' | 'wallet' | null
   setAuthMethod: (method: 'github' | 'wallet' | null) => void
-  user: { name: string; type: 'github' | 'wallet' } | null
-  setUser: (user: { name: string; type: 'github' | 'wallet' } | null) => void
+  user: { name: string; type: 'github' | 'wallet'; walletAddress?: string } | null
+  setUser: (user: { name: string; type: 'github' | 'wallet'; walletAddress?: string } | null) => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -30,14 +30,15 @@ export function useAuth() {
     if (sessionUser && (!authMethod || authMethod === 'github')) {
       setAuthMethod('github')
       setUser({
-        name: sessionUser.username || sessionUser.name || sessionUser.email?.split('@')[0] || 'Unknown',
+        name: sessionUser.name || 'Unknown',
         type: 'github'
       })
     } else if (connected && walletAddress && (!authMethod || authMethod === 'wallet')) {
       setAuthMethod('wallet')
       setUser({
-        name: walletAddress.slice(0, 4) + '...' + walletAddress.slice(-4),
-        type: 'wallet'
+        name: walletAddress,
+        type: 'wallet',
+        walletAddress
       })
     } else if (!sessionUser && !connected) {
       setAuthMethod(null)

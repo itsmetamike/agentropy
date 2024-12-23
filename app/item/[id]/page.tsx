@@ -137,7 +137,7 @@ export default function ItemPage() {
               <span>{post.points} points</span>
               <span>by {post.username.startsWith('0x') || post.username.length > 30 ? (
                 <>
-                  {post.username.startsWith('0x') ? null : <WalletIcon />}
+                  <WalletIcon />
                   {shortenAddress(post.username)}
                 </>
               ) : (
@@ -166,7 +166,7 @@ export default function ItemPage() {
                             post.token_blockchain === 'optimism' ? 'op' : 
                             post.token_blockchain === 'solana' ? 'sol' : 
                             post.token_blockchain}.png`}
-                      alt={post.token_blockchain}
+                      alt={post.token_blockchain || 'blockchain'}
                       width={12}
                       height={12}
                       className="w-3 h-3"
@@ -176,7 +176,7 @@ export default function ItemPage() {
                       className="text-[#888] dark:text-[#666] hover:underline"
                       skipWarning={true}
                     >
-                      ${post.token_ticker.replace('$', '')}
+                      ${(post.token_ticker || '').replace(/\$/g, '')}
                     </ExternalLink>
                   </div>
                 </>
@@ -190,9 +190,9 @@ export default function ItemPage() {
             {post.comments?.map((comment) => (
               <div key={comment.id} className="border-2 border-text p-line">
                 <div className="text-[0.9em] text-[#888] dark:text-[#666] mb-2">
-                  {comment.username.startsWith('0x') || comment.username.length > 30 ? (
+                  {comment.auth_type === 'wallet' ? (
                     <>
-                      {comment.username.startsWith('0x') ? null : <WalletIcon />}
+                      <WalletIcon />
                       {shortenAddress(comment.username)}
                     </>
                   ) : (

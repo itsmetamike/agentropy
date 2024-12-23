@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '@supabase/supabase-js';
 import { useAuthStore } from './auth';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey, Commitment } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 const supabase = createClient(
@@ -13,6 +13,7 @@ export type Comment = {
     id: string;
     post_id: string;
     username: string;
+    auth_type: 'github' | 'wallet';
     text: string;
     created_at: string;
 };
@@ -22,16 +23,17 @@ export type BlockchainType = 'solana' | 'base' | 'ethereum' | 'arbitrum' | 'opti
 export type Post = {
     id: string;
     title: string;
-    url?: string;
-    text?: string;
+    url?: string | null;
+    text?: string | null;
     points: number;
     username: string;
+    auth_type: 'github' | 'wallet';
     created_at: string;
     upvoters: string[];
     has_token: boolean;
-    token_ticker?: string;
-    token_blockchain?: BlockchainType;
-    token_contract?: string;
+    token_ticker?: string | null;
+    token_blockchain?: BlockchainType | null;
+    token_contract?: string | null;
     is_token_deployer?: boolean;
     is_token_holder?: boolean;
     comments?: Comment[];
@@ -75,7 +77,7 @@ export async function validateTokenStatus(
                 const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
                     userPubkey,
                     { mint: mintPubkey },
-                    { commitment: 'confirmed' }
+                    'confirmed' as Commitment
                 );
 
                 // Check if user has any token accounts with non-zero balance
@@ -145,15 +147,24 @@ export async function getPostById(id: string): Promise<Post | null> {
 
         if (!post) return null;
 
-        // Check token deployer and holder status if this is a token post
-        if (post.has_token && post.token_contract && post.token_blockchain) {
-            const { isDeployer, isHolder } = await validateTokenStatus(
-                post.token_blockchain,
-                post.token_contract,
-                post.username
-            );
-            post.is_token_deployer = isDeployer;
-            post.is_token_holder = isHolder;
+        // Check token deployer and holder status only if the post creator used a wallet
+        if (post.has_token && post.token_contract && post.token_blockchain && post.auth_type === 'wallet') {
+            try {
+                const { isDeployer, isHolder } = await validateTokenStatus(
+                    post.token_blockchain,
+                    post.token_contract,
+                    post.username
+                );
+                post.is_token_deployer = isDeployer;
+                post.is_token_holder = isHolder;
+            } catch (error) {
+                console.error('Error validating token status:', error);
+                post.is_token_deployer = false;
+                post.is_token_holder = false;
+            }
+        } else {
+            post.is_token_deployer = false;
+            post.is_token_holder = false;
         }
 
         return { ...post, comments };
@@ -166,99 +177,72 @@ export async function getPostById(id: string): Promise<Post | null> {
 export async function addPost(
     newPost: {
         title: string;
-        url?: string;
-        text?: string;
+        url?: string | null;
+        text?: string | null;
         has_token?: boolean;
-        token_ticker?: string;
-        token_blockchain?: BlockchainType;
-        token_contract?: string;
+        token_ticker?: string | null;
+        token_blockchain?: BlockchainType | null;
+        token_contract?: string | null;
+        is_token_deployer?: boolean;
+        is_token_holder?: boolean;
+        auth_type: 'github' | 'wallet';
     },
     walletAddress?: string
 ): Promise<Post> {
     try {
-        const { authMethod } = useAuthStore.getState();
+        const { authMethod, user } = useAuthStore.getState();
         if (!authMethod) throw new Error('User must be authenticated to post');
+        if (!user) throw new Error('User not found');
 
-        let username: string;
-        if (authMethod === 'github') {
-            const { data: { user } } = await supabase.auth.getUser();
-            username = user?.user_metadata?.user_name || user?.email || 'unknown';
-        } else {
-            if (!walletAddress) throw new Error('Wallet address is required for wallet authentication');
-            username = walletAddress;
-        }
-
-        // Check token status if this is a token post
-        let is_token_deployer = false;
-        let is_token_holder = false;
-        if (newPost.has_token && newPost.token_contract && newPost.token_blockchain && walletAddress) {
-            const { isDeployer, isHolder } = await validateTokenStatus(
-                newPost.token_blockchain,
-                newPost.token_contract,
-                walletAddress
-            );
-            is_token_deployer = isDeployer;
-            is_token_holder = isHolder;
-        }
-
-        const post = {
+        const post: Post = {
             id: uuidv4(),
             title: newPost.title,
-            url: newPost.url || null,
-            text: newPost.text || null,
+            url: newPost.url ?? null,
+            text: newPost.text ?? null,
             points: 1,
-            username,
+            username: user.name,
+            auth_type: authMethod,
             created_at: new Date().toISOString(),
             upvoters: [],
-            has_token: newPost.has_token || false,
-            token_ticker: newPost.token_ticker || null,
-            token_blockchain: newPost.token_blockchain || null,
-            token_contract: newPost.token_contract || null,
-            is_token_deployer,
-            is_token_holder
+            has_token: newPost.has_token ?? false,
+            token_ticker: newPost.token_ticker ?? null,
+            token_blockchain: newPost.token_blockchain ?? null,
+            token_contract: newPost.token_contract ?? null,
+            is_token_deployer: newPost.is_token_deployer ?? false,
+            is_token_holder: newPost.is_token_holder ?? false
         };
 
-        console.log('Attempting to insert post:', post);
-
-        const { data, error } = await supabase
+        const { error } = await supabase
             .from('posts')
-            .insert([post])
-            .select()
-            .single();
+            .insert([post]);
 
         if (error) {
             console.error('Supabase error:', error);
             throw error;
         }
 
-        return data;
+        return post;
     } catch (error) {
         console.error('Error adding post:', error);
         throw error;
     }
 }
 
-export async function upvotePost(post: Post, walletAddress?: string): Promise<void> {
+export async function upvotePost(post: Post, username: string): Promise<void> {
     try {
-        const { authMethod } = useAuthStore.getState();
+        const { authMethod, user } = useAuthStore.getState();
         if (!authMethod) throw new Error('User must be authenticated to upvote');
+        if (!user) throw new Error('User not found');
 
-        let username: string;
-        if (authMethod === 'github') {
-            const { data: { user } } = await supabase.auth.getUser();
-            username = user?.user_metadata?.user_name || user?.email || 'unknown';
-        } else {
-            if (!walletAddress) throw new Error('Wallet address is required for wallet authentication');
-            username = walletAddress;
-        }
-
-        if (post.upvoters.includes(username)) return;
+        // Initialize upvoters if it doesn't exist
+        const upvoters = post.upvoters || [];
+        if (upvoters.includes(user.name)) return;
 
         const { error } = await supabase
             .from('posts')
             .update({ 
-                points: post.points + 1,
-                upvoters: [...post.upvoters, username]
+                points: (post.points || 0) + 1,
+                upvoters: [...upvoters, user.name]
             })
             .eq('id', post.id);
 
@@ -280,6 +264,7 @@ export async function addCommentToPost(postId: string, text: string, walletAddre
             post_id: postId,
             text,
             username: user.name,
+            auth_type: authMethod === 'github' ? 'github' : 'wallet',
             created_at: new Date().toISOString(),
         };
 

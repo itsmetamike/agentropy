@@ -47,9 +47,10 @@ export default function Page() {
   }
 
   const handleUpvote = async (postId: string) => {
-    if (!session?.user) return;
-    const postToUpvote = postsState.find(post => post.id === parseInt(postId));
-    upvotePost(postToUpvote!, session.user.username!);
+    if (!session?.user?.name) return;
+    const postToUpvote = postsState.find(post => post.id === postId);
+    if (!postToUpvote) return;
+    await upvotePost(postToUpvote, session.user.name);
     applySorting();
   }
 
@@ -122,7 +123,7 @@ export default function Page() {
                       >
                         ▲
                       </button>
-                      <h2 className="text-text font-normal m-0">
+                      <h2 className="text-text font-normal m-0 normal-case">
                         <Link href={`/item/${post.id}`} className="text-text hover:underline">
                           {post.title}
                         </Link>
@@ -135,9 +136,9 @@ export default function Page() {
                     </div>
                     <div className="text-[0.8em] text-[#888] dark:text-[#666] flex flex-wrap items-center gap-x-1 pl-[18px]">
                       <span>{post.points} points</span>
-                      <span>by {post.username.startsWith('0x') || post.username.length > 30 ? (
-                        <span className="inline-flex items-center gap-2">
-                          {post.username.startsWith('0x') ? null : <WalletIcon />}
+                      <span>by {post.auth_type === 'wallet' || post.username.length > 30 ? (
+                        <span className="inline-flex items-center gap-1">
+                          <WalletIcon />
                           {shortenAddress(post.username)}
                           {post.has_token && (
                             <>
@@ -155,10 +156,10 @@ export default function Page() {
                           )}
                         </span>
                       ) : (
-                        <>
+                        <span className="inline-flex items-center gap-1">
                           <GithubIcon />
                           {post.username}
-                        </>
+                        </span>
                       )}</span>
                       <span>{getTimeDifference(post.created_at)}</span>
                       <span>|</span>
@@ -166,28 +167,28 @@ export default function Page() {
                         href={`/item/${post.id}`}
                         className="text-[#888] dark:text-[#666] hover:underline"
                       >
-                        {post.comments_count} comments
+                        {post.comments?.length ?? 0} comments
                       </Link>
                     </div>
                     {post.has_token && (
                       <div className="text-[0.8em] text-[#888] dark:text-[#666] flex flex-wrap items-center gap-x-1 pl-[18px]">
                         <div className="inline-flex items-center gap-1">
                           <Image
-                            src={`/${post.token_blockchain === 'ethereum' ? 'eth' : 
-                                  post.token_blockchain === 'optimism' ? 'op' : 
-                                  post.token_blockchain === 'solana' ? 'sol' : 
-                                  post.token_blockchain}.png`}
-                            alt={post.token_blockchain}
+                            src={`/${(post.token_blockchain ?? 'unknown') === 'ethereum' ? 'eth' : 
+                                  (post.token_blockchain ?? 'unknown') === 'optimism' ? 'op' : 
+                                  (post.token_blockchain ?? 'unknown') === 'solana' ? 'sol' : 
+                                  post.token_blockchain ?? 'unknown'}.png`}
+                            alt={post.token_blockchain ?? 'unknown'}
                             width={12}
                             height={12}
                             className="w-3 h-3"
                           />
                           <ExternalLink 
-                            href={`https://dexscreener.com/${post.token_blockchain}/${post.token_contract}`}
+                            href={`https://dexscreener.com/${post.token_blockchain ?? 'unknown'}/${post.token_contract}`}
                             className="text-[#888] dark:text-[#666] hover:underline"
                             skipWarning={true}
                           >
-                            ${post.token_ticker.replace('$', '')}
+                            ${post.token_ticker?.replace('$', '') || post.token_ticker}
                           </ExternalLink>
                         </div>
                       </div>

@@ -104,6 +104,11 @@ export default function SubmitForm() {
       return;
     }
 
+    if (!authMethod) {
+      alert('You must be authenticated to submit a post');
+      return;
+    }
+
     let post = {
       title: title.trim(),
       url: url.trim() || undefined,
@@ -113,11 +118,12 @@ export default function SubmitForm() {
       token_blockchain: hasToken ? tokenBlockchain : undefined,
       token_contract: hasToken ? tokenContract.trim() : undefined,
       is_token_deployer: hasToken ? verifiedDeployer && claimedDeployer : undefined,
-      is_token_holder: hasToken ? verifiedHolder && claimedHolder : undefined
+      is_token_holder: hasToken ? verifiedHolder && claimedHolder : undefined,
+      auth_type: authMethod
     };
 
     try {
-      console.log('Submitting post with wallet address:', publicKey?.toBase58());
+      console.log('Submitting post with auth:', authMethod);
       console.log('Post data:', post);
       await addPost(post, publicKey?.toBase58());
       router.push('/');
