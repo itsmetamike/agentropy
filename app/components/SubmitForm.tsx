@@ -230,20 +230,13 @@ export default function SubmitForm() {
                     <td className="py-2">
                       <select
                         value={tokenBlockchain}
-                        onChange={(e) => {
-                          // Only allow changing if selecting Solana
-                          if (e.target.value === 'solana') {
-                            setTokenBlockchain(e.target.value as BlockchainType);
-                          }
-                        }}
+                        onChange={(e) => setTokenBlockchain(e.target.value as BlockchainType)}
                         className="w-full p-1 bg-transparent border border-[#666] text-text"
                       >
                         {blockchains.map((chain) => (
                           <option 
                             key={chain} 
                             value={chain}
-                            className={chain !== 'solana' ? 'text-[#666]' : ''}
-                            disabled={chain !== 'solana'}
                           >
                             {chain}
                           </option>
